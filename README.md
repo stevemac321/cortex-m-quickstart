@@ -1,138 +1,188 @@
-# `cortex-m-quickstart`
+# `cortex-m-quickstart fork with instructions for targetting STM32F401RE from a Linux Host`
+Your README is already comprehensive, but let's make sure it's as clear and informative as possible. Here are a few refinements and additions to ensure everything is covered:
 
-> A template for building applications for ARM Cortex-M microcontrollers
+---
 
-This project is developed and maintained by the [Cortex-M team][team].
+# STM32F401RE Rust Setup
 
-## Dependencies
+This guide provides a step-by-step process for setting up Rust to run on the STM32F401RE microcontroller, assuming a host system running Ubuntu 24.04 LTS.
 
-To build embedded programs using this template you'll need:
+## Prerequisites
 
-- Rust 1.31, 1.30-beta, nightly-2018-09-13 or a newer toolchain. e.g. `rustup
-  default beta`
+1. **Embedded Rust Book:** Complete all steps up to Chapter 2.2. You can skip 2.1 QEMU if not needed. You can access the book [here](https://rust-embedded.github.io/book).
 
-- The `cargo generate` subcommand. [Installation
-  instructions](https://github.com/ashleygwilliams/cargo-generate#installation).
+2. **Install Rust Toolchain:**
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   rustup target add thumbv7em-none-eabihf
+   ```
 
-- `rust-std` components (pre-compiled `core` crate) for the ARM Cortex-M
-  targets. Run:
+3. **Install `cargo-generate`:**
+   ```bash
+   cargo install cargo-generate
+   ```
 
-``` console
-$ rustup target add thumbv6m-none-eabi thumbv7m-none-eabi thumbv7em-none-eabi thumbv7em-none-eabihf
-```
+4. **Install `st-util` for flashing:**
+   ```bash
+   sudo apt install stlink-tools
+   ```
 
-## Using this template
+## Setup
 
-**NOTE**: This is the very short version that only covers building programs. For
-the long version, which additionally covers flashing, running and debugging
-programs, check [the embedded Rust book][book].
+### 1. Configure `.cargo/config.toml`
 
-[book]: https://rust-embedded.github.io/book
+Set the compilation target specific to your board:
 
-0. Before we begin you need to identify some characteristics of the target
-  device as these will be used to configure the project:
-
-- The ARM core. e.g. Cortex-M3.
-
-- Does the ARM core include an FPU? Cortex-M4**F** and Cortex-M7**F** cores do.
-
-- How much Flash memory and RAM does the target device has? e.g. 256 KiB of
-  Flash and 32 KiB of RAM.
-
-- Where are Flash memory and RAM mapped in the address space? e.g. RAM is
-  commonly located at address `0x2000_0000`.
-
-You can find this information in the data sheet or the reference manual of your
-device.
-
-In this example we'll be using the STM32F3DISCOVERY. This board contains an
-STM32F303VCT6 microcontroller. This microcontroller has:
-
-- A Cortex-M4F core that includes a single precision FPU
-
-- 256 KiB of Flash located at address 0x0800_0000.
-
-- 40 KiB of RAM located at address 0x2000_0000. (There's another RAM region but
-  for simplicity we'll ignore it).
-
-1. Instantiate the template.
-
-``` console
-$ cargo generate --git https://github.com/rust-embedded/cortex-m-quickstart
- Project Name: app
- Creating project called `app`...
- Done! New project created /tmp/app
-
-$ cd app
-```
-
-2. Set a default compilation target. There are four options as mentioned at the
-   bottom of `.cargo/config`. For the STM32F303VCT6, which has a Cortex-M4F
-   core, we'll pick the `thumbv7em-none-eabihf` target.
-
-``` console
-$ tail -n9 .cargo/config.toml
-```
-
-``` toml
+```toml
 [build]
-# Pick ONE of these compilation targets
-# target = "thumbv6m-none-eabi"    # Cortex-M0 and Cortex-M0+
-# target = "thumbv7m-none-eabi"    # Cortex-M3
-# target = "thumbv7em-none-eabi"   # Cortex-M4 and Cortex-M7 (no FPU)
 target = "thumbv7em-none-eabihf" # Cortex-M4F and Cortex-M7F (with FPU)
-# target = "thumbv8m.base-none-eabi"   # Cortex-M23
-# target = "thumbv8m.main-none-eabi"   # Cortex-M33 (no FPU)
-# target = "thumbv8m.main-none-eabihf" # Cortex-M33 (with FPU)
 ```
 
-3. Enter the memory region information into the `memory.x` file.
+### 2. Modify `memory.x`
 
-``` console
-$ cat memory.x
-/* Linker script for the STM32F303VCT6 */
+Add `ENTRY(Reset_Handler)` to your `memory.x` file:
+
+```text
+ENTRY(Reset_Handler)
+
 MEMORY
 {
-  /* NOTE 1 K = 1 KiBi = 1024 bytes */
-  FLASH : ORIGIN = 0x08000000, LENGTH = 256K
-  RAM : ORIGIN = 0x20000000, LENGTH = 40K
+    FLASH (RX) : ORIGIN = 0x08000000, LENGTH = 512K
+    RAM (RWX) : ORIGIN = 0x20000000, LENGTH = 96K
 }
 ```
 
-4. Build the template application or one of the examples.
+### 3. Add STM32F4 Crate
 
-``` console
-$ cargo build
+Add the necessary crate for the STM32F4 series:
+
+```bash
+cargo add stm32f4@=0.15.1
 ```
 
-## VS Code
+### 4. Update `Cargo.toml`
 
-This template includes launch configurations for debugging CortexM programs with Visual Studio Code located in the `.vscode/` directory.  
-See [.vscode/README.md](./.vscode/README.md) for more information.  
-If you're not using VS Code, you can safely delete the directory from the generated project.
+Configure your dependencies in `Cargo.toml`:
 
-# License
+```toml
+[package]
+edition = "2018"
+name = "rust_nucleo"
+version = "0.1.0"
 
-This template is licensed under either of
+[dependencies]
+cortex-m = "0.6.0"
+cortex-m-rt = { version = "0.6.10", features = ["device"] }
+cortex-m-semihosting = "0.3.3"
+panic-halt = "0.2.0"
+stm32f4 = { version = "0.14.0", features = ["stm32f401", "rt"] }
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
-  http://www.apache.org/licenses/LICENSE-2.0)
+[[bin]]
+name = "rust_nucleo"
+test = false
+bench = false
 
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+[profile.release]
+codegen-units = 1 # better optimizations
+debug = true # symbols are nice and they don't increase the size on Flash
+lto = true # better optimizations
+```
 
-at your option.
+### 5. Edit `src/main.rs`
 
-## Contribution
+Include this in your `main.rs` file to control the GPIO:
 
-Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
-dual licensed as above, without any additional terms or conditions.
+```rust
+#![no_std]
+#![no_main]
 
-## Code of Conduct
+use panic_halt as _;
+use cortex_m_semihosting::hprintln;
+use stm32f4::stm32f401;
+use cortex_m::asm;
+use cortex_m_rt::entry;
 
-Contribution to this crate is organized under the terms of the [Rust Code of
-Conduct][CoC], the maintainer of this crate, the [Cortex-M team][team], promises
-to intervene to uphold that code of conduct.
+#[entry]
+fn main() -> ! {
+    let peripherals = stm32f401::Peripherals::take().unwrap();
+    let gpioa = &peripherals.GPIOA;
+    gpioa.odr.modify(|_, w| w.odr0().set_bit());
 
-[CoC]: https://www.rust-lang.org/policies/code-of-conduct
-[team]: https://github.com/rust-embedded/wg#the-cortex-m-team
+    loop {
+        hprintln!("Hello, world!").unwrap();
+        asm::nop();
+    }
+}
+```
+
+## Build and Flash
+
+### 1. Build
+
+Compile your project in debug mode for better debugging information:
+
+```bash
+cargo build
+```
+
+### 2. Generate `.bin` File
+
+Convert the ELF file to a binary:
+
+```bash
+cd ./target/thumbv7em-none-eabihf/debug
+sudo apt install binutils-arm-none-eabi
+arm-none-eabi-objcopy -O binary rust_nucleo rust_nucleo.bin
+```
+
+### 3. Flash
+
+Erase and flash the microcontroller:
+
+```bash
+st-flash erase
+st-flash write rust_nucleo.bin 0x08000000
+st-flash reset
+```
+
+### 4. Debug
+
+Start the OpenOCD server in a second terminal:
+
+```bash
+openocd -f interface/stlink.cfg -f target/stm32f4x.cfg
+```
+
+From the first terminal, start GDB:
+
+```bash
+gdb-multiarch -tui -q ./target/thumbv7em-none-eabihf/debug/rust_nucleo
+```
+
+Enter these commands in GDB:
+
+```
+target extended-remote :3333
+monitor arm semihosting enable
+break main
+step
+next
+continue
+```
+
+## Optional
+
+**Check Binary Size:**
+
+```bash
+file rust_nucleo
+arm-none-eabi-readelf -S rust_nucleo
+```
+
+## Resources
+
+- [Rust Embedded Book](https://rust-embedded.github.io/book)
+- [STM32F4 Crate](https://crates.io/crates/stm32f4)
+- [OpenOCD Documentation](http://openocd.org/documentation/)
+- [SVD2Rust Documentation](https://docs.rs/svd2rust/0.24.1/svd2rust/#peripheral-api)
+
