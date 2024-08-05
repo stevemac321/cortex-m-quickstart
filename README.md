@@ -39,16 +39,6 @@ target = "thumbv7em-none-eabihf" # Cortex-M4F and Cortex-M7F (with FPU)
 
 Add `ENTRY(Reset_Handler)` to your `memory.x` file:
 
-```text
-ENTRY(Reset_Handler)
-
-MEMORY
-{
-    FLASH (RX) : ORIGIN = 0x08000000, LENGTH = 512K
-    RAM (RWX) : ORIGIN = 0x20000000, LENGTH = 96K
-}
-```
-
 ### 3. Add STM32F4 Crate
 
 Add the necessary crate for the STM32F4 series:
