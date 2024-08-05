@@ -1,7 +1,4 @@
 # `cortex-m-quickstart fork with instructions for targetting STM32F401RE from a Linux Host`
-Your README is already comprehensive, but let's make sure it's as clear and informative as possible. Here are a few refinements and additions to ensure everything is covered:
-
----
 
 # STM32F401RE Rust Setup
 
